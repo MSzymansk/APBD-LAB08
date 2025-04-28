@@ -9,9 +9,9 @@ public class TripService : ITripService
         "Data Source=db-mssql;Initial Catalog=2019SBD;Integrated Security=True;Encrypt=False;";
 
 
-    public async Task<List<TripDTO>> GetAllTrips()
+    public async Task<List<TripWithCountryDTO>> GetAllTrips()
     {
-        var trips = new List<TripDTO>();
+        var trips = new List<TripWithCountryDTO>();
         var tripCountries = new Dictionary<int, List<CountryDTO>>();
 
         string command = @"
@@ -62,7 +62,7 @@ public class TripService : ITripService
                 {
                     while (await reader.ReadAsync())
                     {
-                        trips.Add(new TripDTO()
+                        trips.Add(new TripWithCountryDTO()
                         {
                             IdTrip = reader.GetInt32(reader.GetOrdinal("IdTrip")),
                             Name = reader.GetString(reader.GetOrdinal("Name")),
@@ -77,6 +77,81 @@ public class TripService : ITripService
             }
         }
 
+        return trips;
+    }
+
+    public async Task<bool> ClientExist(int idClient)
+    {
+        int count = 0;
+
+        string command = @"
+        SELECT COUNT(*) AS Count
+        FROM Trip t
+        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE ct.IdClient = @IdClient";
+
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+
+            await conn.OpenAsync();
+
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    count = reader.GetInt32(reader.GetOrdinal("Count"));
+                }
+            }
+
+            return count > 0;
+        }
+    }
+
+    public async Task<List<TripWithRegistrationDTO>> GetTrips(int idClient)
+    {
+        var trips = new List<TripWithRegistrationDTO>();
+
+        string command = @"
+        SELECT t.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, ct.RegisteredAt, ct.PaymentDate
+        FROM Trip t
+        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE ct.IdClient = @IdClient";
+
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+
+            await conn.OpenAsync();
+
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    trips.Add(new TripWithRegistrationDTO()
+                    {
+                        IdTrip = reader.GetInt32(reader.GetOrdinal("IdTrip")),
+                        Name = reader.GetString(reader.GetOrdinal("Name")),
+                        Description = reader.GetString(reader.GetOrdinal("Description")),
+                        DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
+                        DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
+                        MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
+                        Registration = new RegistrationDto()
+                        {
+                            RegisteredAt = reader.GetInt32(reader.GetOrdinal("RegisteredAt")),
+                            PaymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate"))
+                                ? null
+                                : reader.GetInt32(reader.GetOrdinal("PaymentDate"))
+                        }
+                    });
+                }
+            }
+        }
+        
         return trips;
     }
 }

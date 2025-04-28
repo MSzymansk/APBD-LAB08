@@ -4,5 +4,7 @@ namespace WebApplication1.Services;
 
 public interface ITripService
 {
-    Task<List<TripDTO>>  GetAllTrips();
+    Task<List<TripWithCountryDTO>> GetAllTrips();
+    Task<bool> ClientExist(int idClient);
+    Task<List<TripWithRegistrationDTO>> GetTrips(int idClient);
 }

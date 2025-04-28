@@ -23,13 +23,21 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetTrip(int id)
+        public async Task<IActionResult> GetTrips(int id)
         {
-            // if( await DoesTripExist(id)){
-            //  return NotFound();
-            // }
-            // var trip = ... GetTrip(id);
-            return Ok();
+            if (!await _tripsService.ClientExist(id))
+            {
+                return NotFound($"Client id: {id} not found");
+            }
+
+            var trips = await _tripsService.GetTrips(id);
+
+            if (trips.Count == 0)
+            {
+                return NotFound($"Client id: {id} has no trips");
+            }
+            
+            return Ok(trips);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace WebApplication1.Models.DTOs;
 
-public class TripDTO
+public class TripWithCountryDTO
 {
     public int IdTrip { get; set; }
     public string Name { get; set; }
