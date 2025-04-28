@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using WebApplication1.Models.DTOs;
 using WebApplication1.Services;
 
 namespace WebApplication1.Controllers
@@ -9,11 +9,14 @@ namespace WebApplication1.Controllers
     public class TripsController : ControllerBase
     {
         private readonly ITripService _tripsService;
+        private readonly IClientService _clientService;
 
-        public TripsController(ITripService tripsService)
+        public TripsController(ITripService tripsService, IClientService clientService)
         {
             _tripsService = tripsService;
+            _clientService = clientService;
         }
+        
 
         [HttpGet]
         public async Task<IActionResult> GetTrips()
@@ -39,5 +42,20 @@ namespace WebApplication1.Controllers
             
             return Ok(trips);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> AddClient(CreateClientDTO client)
+        {
+
+            if (client == null)
+            {
+                return BadRequest("Client is null");
+            }
+
+            var result =  await _clientService.AddClient(client);
+            return result;
+        }
+        
+        
     }
 }
