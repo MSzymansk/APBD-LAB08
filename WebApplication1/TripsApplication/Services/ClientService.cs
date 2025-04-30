@@ -9,6 +9,81 @@ public class ClientService : IClientService
     private readonly string _connectionString =
         "Data Source=db-mssql;Initial Catalog=2019SBD;Integrated Security=True;Encrypt=False;";
 
+    public async Task<bool> ClientExist(int idClient)
+    {
+        int count = 0;
+
+        string command = @"
+        SELECT COUNT(*) AS Count
+        FROM Trip t
+        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE ct.IdClient = @IdClient";
+
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+
+            await conn.OpenAsync();
+
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    count = reader.GetInt32(reader.GetOrdinal("Count"));
+                }
+            }
+
+            return count > 0;
+        }
+    }
+
+    public async Task<List<TripWithRegistrationDTO>> GetTrips(int idClient)
+    {
+        var trips = new List<TripWithRegistrationDTO>();
+
+        string command = @"
+        SELECT t.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, ct.RegisteredAt, ct.PaymentDate
+        FROM Trip t
+        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE ct.IdClient = @IdClient";
+
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+
+            await conn.OpenAsync();
+
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    trips.Add(new TripWithRegistrationDTO()
+                    {
+                        IdTrip = reader.GetInt32(reader.GetOrdinal("IdTrip")),
+                        Name = reader.GetString(reader.GetOrdinal("Name")),
+                        Description = reader.GetString(reader.GetOrdinal("Description")),
+                        DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
+                        DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
+                        MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
+                        Registration = new RegistrationDto()
+                        {
+                            RegisteredAt = reader.GetInt32(reader.GetOrdinal("RegisteredAt")),
+                            PaymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate"))
+                                ? null
+                                : reader.GetInt32(reader.GetOrdinal("PaymentDate"))
+                        }
+                    });
+                }
+            }
+        }
+
+        return trips;
+    }
+
     private async Task<IActionResult> ValidateClientData(CreateClientDTO client)
     {
         if (string.IsNullOrWhiteSpace(client.FirstName))
@@ -93,50 +168,32 @@ public class ClientService : IClientService
 
         return new OkResult();
     }
-
-    private async Task<int> GetClientIndex()
-    {
-        SqlConnection connection = new SqlConnection(_connectionString);
-
-        string command = @"
-            SELECT ISNULL(MAX(IdClient), 0) FROM Client
-        ";
-
-        using (SqlConnection conn = new SqlConnection(_connectionString))
-        using (SqlCommand cmd = new SqlCommand(command, conn))
-        {
-            await conn.OpenAsync();
-            int index = (int)(await cmd.ExecuteScalarAsync());
-            return index + 1;
-        }
-    }
-
+    
     public async Task<IActionResult> AddClient(CreateClientDTO client)
     {
         var validationResult = await ValidateClientData(client);
         if (validationResult is BadRequestObjectResult)
         {
-            return validationResult; 
+            return validationResult;
         }
 
         var emailValidationResult = await ValidateEmail(client.Email);
         if (emailValidationResult is ConflictObjectResult)
         {
-            return emailValidationResult; 
+            return emailValidationResult;
         }
 
         var peselValidationResult = await ValidatePesel(client.Pesel);
         if (peselValidationResult is ConflictObjectResult)
         {
-            return peselValidationResult; 
+            return peselValidationResult;
         }
 
 
-        int newClientId = await GetClientIndex();
-
         string command = @"
-            INSERT  INTO Client (IdClient,FirstName, LastName, Email, Telephone, Pesel)
-            VALUES   (@IdClient,@FirstName, @LastName, @Email, @Telephone, @Pesel);
+            INSERT  INTO Client (FirstName, LastName, Email, Telephone, Pesel)
+            VALUES   (@FirstName, @LastName, @Email, @Telephone, @Pesel);
+            SELECT CAST(SCOPE_IDENTITY() as int);
         ";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -144,16 +201,14 @@ public class ClientService : IClientService
         {
             await conn.OpenAsync();
 
-            cmd.Parameters.AddWithValue("@IdClient", newClientId);
             cmd.Parameters.AddWithValue("@FirstName", client.FirstName);
             cmd.Parameters.AddWithValue("@LastName", client.LastName);
             cmd.Parameters.AddWithValue("@Email", client.Email);
             cmd.Parameters.AddWithValue("@Telephone", client.Telephone);
             cmd.Parameters.AddWithValue("@Pesel", client.Pesel);
-
-            await cmd.ExecuteNonQueryAsync();
+            
+            var newClientId = (int)await cmd.ExecuteScalarAsync();
+            return new CreatedResult($"/Client/{newClientId}", newClientId);
         }
-        
-        return new CreatedResult($"/Client/{newClientId}", newClientId);
     }
 }

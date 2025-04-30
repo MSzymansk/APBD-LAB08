@@ -12,3 +12,9 @@ public class TripWithRegistrationDTO
     public RegistrationDto Registration { get; set; }
 
 }
+
+public class RegistrationDto
+{
+    public int RegisteredAt { get; set; }
+    public int? PaymentDate { get; set; }
+}

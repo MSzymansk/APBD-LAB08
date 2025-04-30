@@ -5,8 +5,7 @@ namespace WebApplication1.Services;
 
 public interface IClientService
 {
-    
     Task<IActionResult> AddClient(CreateClientDTO client);
-    
-    
+    Task<bool> ClientExist(int idClient);
+    Task<List<TripWithRegistrationDTO>> GetTrips(int idClient);
 }
