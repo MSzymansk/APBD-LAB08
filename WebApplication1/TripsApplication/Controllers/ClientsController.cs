@@ -38,32 +38,60 @@ namespace WebApplication1.Controllers
             return await _clientService.AddClient(client);
         }
 
-        [HttpPut("{id}/trips/{tripId}")]
-        public async Task<IActionResult> registerClient(int id, int tripId)
+        [HttpPut("{idClient}/trips/{idTrip}")]
+        public async Task<IActionResult> registerClient(int idClient, int idTrip)
         {
-            if (!await _clientService.ClientExist(id))
+            if (!await _clientService.ClientExist(idClient))
             {
-                return NotFound($"Client id: {id} not found");
+                return NotFound($"Client id: {idClient} not found");
             }
 
-            if (!await _tripService.TripExist(tripId))
+            if (!await _tripService.TripExist(idTrip))
             {
-                return NotFound($"Trip id: {tripId} not found");
+                return NotFound($"Trip id: {idTrip} not found");
             }
 
-            if (!await _tripService.SpotsExist(tripId))
+            if (!await _tripService.SpotsExist(idTrip))
             {
-                return Conflict($"Spot id: {tripId} is full");
+                return Conflict($"Trip id: {idTrip} is full");
             }
 
-            if (await _tripService.RegisterExists(id, tripId))
+            if (await _tripService.RegisterExists(idClient, idTrip))
             {
-                return Conflict($"Client id: {id} is already registered");
+                return Conflict($"Client id: {idClient} is already registered");
             }
 
-            return await _tripService.RegisterClient(id, tripId);
+            bool success = await _tripService.RegisterClient(idClient, idTrip);
+
+            return success
+                ? new CreatedResult($"/api/trips/{idTrip}/clients/{idClient}",
+                    $"Client id: {idClient} registered to the trip id: {idTrip}")
+                : StatusCode(500, "Failed to register client to the trip");
         }
-        
-        
+
+        [HttpDelete("{idClient}/trips/{idTrip}")]
+        public async Task<IActionResult> deleteClient(int idClient, int idTrip)
+        {
+            if (!await _clientService.ClientExist(idClient))
+            {
+                return NotFound($"Client id: {idClient} not found");
+            }
+
+            if (!await _tripService.TripExist(idTrip))
+            {
+                return NotFound($"Trip id: {idTrip} not found");
+            }
+
+            if (!await _tripService.RegisterExists(idClient, idTrip))
+            {
+                return NotFound($"Client id: {idClient} is not registered to the trip id: {idTrip}");
+            }
+
+            bool success = await _tripService.RemoveClientFromTrip(idClient, idTrip);
+
+            return success
+                ? Ok($"Client id: {idClient} unregistered from trip id: {idTrip}")
+                : StatusCode(500, "An error occurred while unregistering client from trip");
+        }
     }
 }

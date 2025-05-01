@@ -172,7 +172,7 @@ public class TripService : ITripService
         }
     }
 
-    public async Task<IActionResult> RegisterClient(int idClient, int idTrip)
+    public async Task<bool> RegisterClient(int idClient, int idTrip)
     {
         String command = @"
         INSERT INTO Client_Trip(IdClient, IdTrip, RegisteredAt)
@@ -187,10 +187,23 @@ public class TripService : ITripService
             cmd.Parameters.AddWithValue("@RegisteredAt", DateTime.Now.ToString("yyyyMMdd"));
 
             await conn.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+            
+            return rowsAffected > 0;
+        }
+    }
 
-            return new CreatedResult($"/api/trips/{idTrip}/clients/{idClient}",
-                $"Client id: {idClient} registered to the trip id: {idTrip}");
+    public async Task<bool> RemoveClientFromTrip(int clientId, int tripId)
+    {
+        string query = "DELETE FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
+        using (var conn = new SqlConnection(_connectionString))
+        using (var cmd = new SqlCommand(query, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", clientId);
+            cmd.Parameters.AddWithValue("@IdTrip", tripId);
+            await conn.OpenAsync();
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
         }
     }
 }

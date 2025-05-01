@@ -12,6 +12,8 @@ public interface ITripService
     Task<bool> SpotsExist(int idTrip);
 
     Task<bool> RegisterExists(int idClient, int idTrip);
-    
-    Task<IActionResult> RegisterClient(int idClient, int idTrip);
+
+    Task<bool> RegisterClient(int idClient, int idTrip);
+
+    Task<bool> RemoveClientFromTrip(int clientId, int tripId);
 }
