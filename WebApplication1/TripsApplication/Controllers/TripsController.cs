@@ -7,7 +7,8 @@ namespace WebApplication1.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class TripsController(ITripService tripsService) : ControllerBase
-    {
+    {   
+        /* GET /api/trips - Returns list of all trips. */
         [HttpGet]
         public async Task<IActionResult> GetTrips()
         {

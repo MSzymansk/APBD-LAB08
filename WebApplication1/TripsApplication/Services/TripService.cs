@@ -15,6 +15,7 @@ public class TripService : ITripService
         var trips = new List<TripWithCountryDTO>();
         var tripCountries = new Dictionary<int, List<CountryDTO>>();
 
+        // Get all trips and their countries
         string command = @"
         SELECT t.IdTrip, c.IdCountry as CountryId, c.Name AS CountryName
         FROM Trip t
@@ -47,6 +48,7 @@ public class TripService : ITripService
 
         foreach (var trip in tripCountries)
         {
+            // Get trip details by ID
             string tripCommand = @"
                     SELECT t.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople
                     FROM Trip t
@@ -81,38 +83,10 @@ public class TripService : ITripService
         return trips;
     }
 
-    public async Task<bool> ClientExist(int idClient)
-    {
-        int count = 0;
-
-        string command = @"
-        SELECT COUNT(*) AS Count
-        FROM Trip t
-        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
-        WHERE ct.IdClient = @IdClient";
-
-
-        using (SqlConnection conn = new SqlConnection(_connectionString))
-        using (SqlCommand cmd = new SqlCommand(command, conn))
-        {
-            cmd.Parameters.AddWithValue("@IdClient", idClient);
-
-            await conn.OpenAsync();
-
-            using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                if (await reader.ReadAsync())
-                {
-                    count = reader.GetInt32(reader.GetOrdinal("Count"));
-                }
-            }
-
-            return count > 0;
-        }
-    }
 
     public async Task<bool> TripExist(int idTrip)
     {
+        // Check if trip exists
         string command = @"SELECT COUNT(*) FROM Trip WHERE IdTrip = @IdTrip";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -129,6 +103,7 @@ public class TripService : ITripService
 
     public async Task<bool> SpotsExist(int idTrip)
     {
+        // Check how many free spots are left on the trip
         string command = @"
         SELECT 
             (t.MaxPeople - COUNT(ct.IdClient)) AS FreeSpots
@@ -158,10 +133,11 @@ public class TripService : ITripService
 
     public async Task<bool> RegisterExists(int idClient, int idTrip)
     {
-        string query = "SELECT COUNT(*) FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
+        // Check if client is already registered for the trip
+        string command = "SELECT COUNT(*) FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
 
         using (var conn = new SqlConnection(_connectionString))
-        using (var cmd = new SqlCommand(query, conn))
+        using (var cmd = new SqlCommand(command, conn))
         {
             cmd.Parameters.AddWithValue("@IdClient", idClient);
             cmd.Parameters.AddWithValue("@IdTrip", idTrip);
@@ -173,7 +149,8 @@ public class TripService : ITripService
     }
 
     public async Task<bool> RegisterClient(int idClient, int idTrip)
-    {
+    {   
+        // Add new registration for client to a trip
         String command = @"
         INSERT INTO Client_Trip(IdClient, IdTrip, RegisteredAt)
         VALUES(@IdClient, @IdTrip, @RegisteredAt);
@@ -188,16 +165,17 @@ public class TripService : ITripService
 
             await conn.OpenAsync();
             int rowsAffected = await cmd.ExecuteNonQueryAsync();
-            
+
             return rowsAffected > 0;
         }
     }
 
     public async Task<bool> RemoveClientFromTrip(int clientId, int tripId)
-    {
-        string query = "DELETE FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
+    {   
+        // Delete client registration from a trip
+        string command = "DELETE FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
         using (var conn = new SqlConnection(_connectionString))
-        using (var cmd = new SqlCommand(query, conn))
+        using (var cmd = new SqlCommand(command, conn))
         {
             cmd.Parameters.AddWithValue("@IdClient", clientId);
             cmd.Parameters.AddWithValue("@IdTrip", tripId);

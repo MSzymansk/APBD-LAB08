@@ -8,6 +8,7 @@ namespace WebApplication1.Controllers
     [ApiController]
     public class ClientsController(IClientService _clientService, ITripService _tripService) : ControllerBase
     {
+        /* GET /api/clients/{id}/trips - Get all trips for a client. */
         [HttpGet("{id}/trips")]
         public async Task<IActionResult> GetTrips(int id)
         {
@@ -26,6 +27,7 @@ namespace WebApplication1.Controllers
             return Ok(trips);
         }
 
+        /* POST /api/clients - Add a new client. */
         [HttpPost]
         public async Task<IActionResult> AddClient([FromBody] CreateClientDTO client)
         {
@@ -33,7 +35,7 @@ namespace WebApplication1.Controllers
             {
                 return BadRequest("Client is null");
             }
-            
+
             if (!await _clientService.EmailExists(client.Email))
             {
                 return Conflict(new { message = "Email is already in use." });
@@ -43,7 +45,7 @@ namespace WebApplication1.Controllers
             {
                 return Conflict(new { message = "Pesel is already in use." });
             }
-            
+
 
             bool success = await _clientService.AddClient(client);
 
@@ -52,6 +54,7 @@ namespace WebApplication1.Controllers
                 : StatusCode(500, "An error occurred while adding the client.");
         }
 
+        /* PUT /api/clients/{id}/trips/{tripId} - Register client to a trip. */
         [HttpPut("{idClient}/trips/{idTrip}")]
         public async Task<IActionResult> registerClient(int idClient, int idTrip)
         {
@@ -83,6 +86,7 @@ namespace WebApplication1.Controllers
                 : StatusCode(500, "Failed to register client to the trip");
         }
 
+        /* DELETE /api/clients/{id}/trips/{tripId} - Remove client from a trip. */
         [HttpDelete("{idClient}/trips/{idTrip}")]
         public async Task<IActionResult> deleteClient(int idClient, int idTrip)
         {

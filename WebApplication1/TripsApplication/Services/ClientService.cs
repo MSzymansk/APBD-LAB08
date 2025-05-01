@@ -11,6 +11,7 @@ public class ClientService : IClientService
 
     public async Task<bool> ClientExist(int idClient)
     {
+        // Check if client with given ID exists
         string command = @"SELECT COUNT(*) FROM Client WHERE IdClient = @IdClient";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -29,12 +30,12 @@ public class ClientService : IClientService
     {
         var trips = new List<TripWithRegistrationDTO>();
 
+        // Get trips for the given client, including registration and payment dates
         string command = @"
         SELECT t.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, ct.RegisteredAt, ct.PaymentDate
         FROM Trip t
         INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
         WHERE ct.IdClient = @IdClient";
-
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
         using (SqlCommand cmd = new SqlCommand(command, conn))
@@ -69,9 +70,10 @@ public class ClientService : IClientService
 
         return trips;
     }
-    
+
     public async Task<bool> EmailExists(string email)
     {
+        // Check if email already exists in Client table
         string command = "SELECT COUNT(*) FROM Client WHERE Email = @Email";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -87,6 +89,7 @@ public class ClientService : IClientService
 
     public async Task<bool> PeselExists(string pesel)
     {
+        // Check if PESEL already exists in Client table
         string command = "SELECT COUNT(*) FROM Client WHERE Pesel = @Pesel";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
@@ -101,8 +104,8 @@ public class ClientService : IClientService
     }
 
     public async Task<bool> AddClient(CreateClientDTO client)
-    {
-
+    {   
+        // Insert a new client and return new client ID
         string command = @"
             INSERT  INTO Client (FirstName, LastName, Email, Telephone, Pesel)
             VALUES   (@FirstName, @LastName, @Email, @Telephone, @Pesel);
