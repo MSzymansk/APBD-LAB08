@@ -69,53 +69,8 @@ public class ClientService : IClientService
 
         return trips;
     }
-
-    private async Task<IActionResult> ValidateClientData(CreateClientDTO client)
-    {
-        if (string.IsNullOrWhiteSpace(client.FirstName))
-        {
-            return new BadRequestObjectResult("First name is required.");
-        }
-
-        if (!client.FirstName.All(char.IsLetter))
-        {
-            return new BadRequestObjectResult("First name must contain only letters.");
-        }
-
-        if (string.IsNullOrWhiteSpace(client.LastName))
-        {
-            return new BadRequestObjectResult("Last name is required.");
-        }
-
-        if (!client.LastName.All(char.IsLetter))
-        {
-            return new BadRequestObjectResult("Last name must contain only letters.");
-        }
-
-        if (string.IsNullOrWhiteSpace(client.Email) || !client.Email.Contains('@'))
-        {
-            return new BadRequestObjectResult("Invalid email format.");
-        }
-
-        if (string.IsNullOrWhiteSpace(client.Telephone))
-        {
-            return new BadRequestObjectResult("Telephone number is required.");
-        }
-
-        if (!client.Telephone.All(char.IsDigit))
-        {
-            return new BadRequestObjectResult("Telephone number must contain only digits.");
-        }
-
-        if (string.IsNullOrWhiteSpace(client.Pesel) || client.Pesel.Length != 11 || !client.Pesel.All(char.IsDigit))
-        {
-            return new BadRequestObjectResult("Invalid PESEL number. It must be exactly 11 digits long.");
-        }
-
-        return new OkResult();
-    }
-
-    private async Task<IActionResult> ValidateEmail(string email)
+    
+    public async Task<bool> EmailExists(string email)
     {
         string command = "SELECT COUNT(*) FROM Client WHERE Email = @Email";
 
@@ -125,17 +80,12 @@ public class ClientService : IClientService
             cmd.Parameters.AddWithValue("@Email", email);
             await conn.OpenAsync();
 
-            var result = (int)await cmd.ExecuteScalarAsync();
-            if (result > 0)
-            {
-                return new ConflictObjectResult("Email is already in use.");
-            }
+            int result = (int)await cmd.ExecuteScalarAsync();
+            return result == 0;
         }
-
-        return new OkResult();
     }
 
-    private async Task<IActionResult> ValidatePesel(string pesel)
+    public async Task<bool> PeselExists(string pesel)
     {
         string command = "SELECT COUNT(*) FROM Client WHERE Pesel = @Pesel";
 
@@ -145,36 +95,13 @@ public class ClientService : IClientService
             cmd.Parameters.AddWithValue("@Pesel", pesel);
             await conn.OpenAsync();
 
-            var result = (int)await cmd.ExecuteScalarAsync();
-            if (result > 0)
-            {
-                return new ConflictObjectResult("Pesel is already in use.");
-            }
+            int result = (int)await cmd.ExecuteScalarAsync();
+            return result == 0;
         }
-
-        return new OkResult();
     }
 
-    public async Task<IActionResult> AddClient(CreateClientDTO client)
+    public async Task<bool> AddClient(CreateClientDTO client)
     {
-        var validationResult = await ValidateClientData(client);
-        if (validationResult is BadRequestObjectResult)
-        {
-            return validationResult;
-        }
-
-        var emailValidationResult = await ValidateEmail(client.Email);
-        if (emailValidationResult is ConflictObjectResult)
-        {
-            return emailValidationResult;
-        }
-
-        var peselValidationResult = await ValidatePesel(client.Pesel);
-        if (peselValidationResult is ConflictObjectResult)
-        {
-            return peselValidationResult;
-        }
-
 
         string command = @"
             INSERT  INTO Client (FirstName, LastName, Email, Telephone, Pesel)
@@ -193,8 +120,8 @@ public class ClientService : IClientService
             cmd.Parameters.AddWithValue("@Telephone", client.Telephone);
             cmd.Parameters.AddWithValue("@Pesel", client.Pesel);
 
-            var newClientId = (int)await cmd.ExecuteScalarAsync();
-            return new CreatedResult($"/Client/{newClientId}", $"New client id: {newClientId} added");
+            int affectedRows = await cmd.ExecuteNonQueryAsync();
+            return affectedRows > 0;
         }
     }
 }

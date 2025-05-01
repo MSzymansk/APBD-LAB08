@@ -5,7 +5,9 @@ namespace WebApplication1.Services;
 
 public interface IClientService
 {
-    Task<IActionResult> AddClient(CreateClientDTO client);
+    Task<bool> AddClient(CreateClientDTO client);
     Task<bool> ClientExist(int idClient);
+    Task<bool> EmailExists(string email);
+    Task<bool> PeselExists(string pesel);
     Task<List<TripWithRegistrationDTO>> GetTrips(int idClient);
 }

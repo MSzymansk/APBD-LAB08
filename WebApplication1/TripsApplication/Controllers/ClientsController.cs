@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Models.DTOs;
 using WebApplication1.Services;
@@ -34,8 +33,23 @@ namespace WebApplication1.Controllers
             {
                 return BadRequest("Client is null");
             }
+            
+            if (!await _clientService.EmailExists(client.Email))
+            {
+                return Conflict(new { message = "Email is already in use." });
+            }
 
-            return await _clientService.AddClient(client);
+            if (!await _clientService.PeselExists(client.Pesel))
+            {
+                return Conflict(new { message = "Pesel is already in use." });
+            }
+            
+
+            bool success = await _clientService.AddClient(client);
+
+            return success
+                ? Created("", new { message = "Client created successfully." })
+                : StatusCode(500, "An error occurred while adding the client.");
         }
 
         [HttpPut("{idClient}/trips/{idTrip}")]
