@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using WebApplication1.Models.DTOs;
 
 namespace WebApplication1.Services;
@@ -78,5 +79,118 @@ public class TripService : ITripService
         }
 
         return trips;
+    }
+
+    public async Task<bool> ClientExist(int idClient)
+    {
+        int count = 0;
+
+        string command = @"
+        SELECT COUNT(*) AS Count
+        FROM Trip t
+        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE ct.IdClient = @IdClient";
+
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+
+            await conn.OpenAsync();
+
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    count = reader.GetInt32(reader.GetOrdinal("Count"));
+                }
+            }
+
+            return count > 0;
+        }
+    }
+
+    public async Task<bool> TripExist(int idTrip)
+    {
+        string command = @"SELECT COUNT(*) FROM Trip WHERE IdTrip = @IdTrip";
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdTrip", idTrip);
+
+            await conn.OpenAsync();
+
+            int count = (int)await cmd.ExecuteScalarAsync();
+            return count > 0;
+        }
+    }
+
+    public async Task<bool> SpotsExist(int idTrip)
+    {
+        string command = @"
+        SELECT 
+            (t.MaxPeople - COUNT(ct.IdClient)) AS FreeSpots
+        FROM Trip t
+        LEFT JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
+        WHERE t.IdTrip = @IdTrip
+        GROUP BY t.MaxPeople
+    ";
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdTrip", idTrip);
+            await conn.OpenAsync();
+
+            object result = await cmd.ExecuteScalarAsync();
+
+            if (result == null || result == DBNull.Value)
+            {
+                return false;
+            }
+
+            int freeSpots = Convert.ToInt32(result);
+            return freeSpots > 0;
+        }
+    }
+
+    public async Task<bool> RegisterExists(int idClient, int idTrip)
+    {
+        string query = "SELECT COUNT(*) FROM Client_Trip WHERE IdClient = @IdClient AND IdTrip = @IdTrip";
+
+        using (var conn = new SqlConnection(_connectionString))
+        using (var cmd = new SqlCommand(query, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+            cmd.Parameters.AddWithValue("@IdTrip", idTrip);
+
+            await conn.OpenAsync();
+            int count = (int)await cmd.ExecuteScalarAsync();
+            return count > 0;
+        }
+    }
+
+    public async Task<IActionResult> RegisterClient(int idClient, int idTrip)
+    {
+        String command = @"
+        INSERT INTO Client_Trip(IdClient, IdTrip, RegisteredAt)
+        VALUES(@IdClient, @IdTrip, @RegisteredAt);
+        ";
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand(command, conn))
+        {
+            cmd.Parameters.AddWithValue("@IdClient", idClient);
+            cmd.Parameters.AddWithValue("@IdTrip", idTrip);
+            cmd.Parameters.AddWithValue("@RegisteredAt", DateTime.Now.ToString("yyyyMMdd"));
+
+            await conn.OpenAsync();
+            await cmd.ExecuteNonQueryAsync();
+
+            return new CreatedResult($"/api/trips/{idTrip}/clients/{idClient}",
+                $"Client id: {idClient} registered to the trip id: {idTrip}");
+        }
     }
 }

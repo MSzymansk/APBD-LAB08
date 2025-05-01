@@ -11,14 +11,7 @@ public class ClientService : IClientService
 
     public async Task<bool> ClientExist(int idClient)
     {
-        int count = 0;
-
-        string command = @"
-        SELECT COUNT(*) AS Count
-        FROM Trip t
-        INNER JOIN Client_Trip ct ON t.IdTrip = ct.IdTrip
-        WHERE ct.IdClient = @IdClient";
-
+        string command = @"SELECT COUNT(*) FROM Client WHERE IdClient = @IdClient";
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
         using (SqlCommand cmd = new SqlCommand(command, conn))
@@ -27,14 +20,7 @@ public class ClientService : IClientService
 
             await conn.OpenAsync();
 
-            using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                if (await reader.ReadAsync())
-                {
-                    count = reader.GetInt32(reader.GetOrdinal("Count"));
-                }
-            }
-
+            int count = (int)await cmd.ExecuteScalarAsync();
             return count > 0;
         }
     }
@@ -168,7 +154,7 @@ public class ClientService : IClientService
 
         return new OkResult();
     }
-    
+
     public async Task<IActionResult> AddClient(CreateClientDTO client)
     {
         var validationResult = await ValidateClientData(client);
@@ -206,9 +192,9 @@ public class ClientService : IClientService
             cmd.Parameters.AddWithValue("@Email", client.Email);
             cmd.Parameters.AddWithValue("@Telephone", client.Telephone);
             cmd.Parameters.AddWithValue("@Pesel", client.Pesel);
-            
+
             var newClientId = (int)await cmd.ExecuteScalarAsync();
-            return new CreatedResult($"/Client/{newClientId}", newClientId);
+            return new CreatedResult($"/Client/{newClientId}", $"New client id: {newClientId} added");
         }
     }
 }
